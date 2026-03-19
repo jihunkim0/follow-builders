@@ -415,10 +415,21 @@ Just output the digest directly.
 When the user says something that sounds like a settings change, handle it:
 
 ### Source Changes
-The source list is managed centrally and cannot be modified by users.
-If a user asks to add or remove sources, tell them: "The source list is curated
-centrally and updates automatically. If you'd like to suggest a source, you can
-open an issue at https://github.com/zarazhangrui/follow-builders."
+The main source list is managed centrally and updates automatically. If a user asks to suggest a central source, direct them to: https://github.com/zarazhangrui/follow-builders.
+
+**Personal Custom Sources (Local Override):**
+If a user wants to add their own personal X/Twitter followers:
+1. Explain that they need their own `X_BEARER_TOKEN` for this feature.
+2. Guide them to create/edit `~/.follow-builders/.env` and add: `X_BEARER_TOKEN="their_token"`
+3. Guide them to create/edit `~/.follow-builders/local-sources.json` in this exact format:
+   ```json
+   {
+     "x_accounts": [
+       { "name": "Display Name", "handle": "twitter_handle_without_@" }
+     ]
+   }
+   ```
+When they request a digest next, the local script will fetch their custom sources and seamlessly merge them into the central feed.
 
 ### Schedule Changes
 - "Switch to weekly/daily" → Update `frequency` in config.json
