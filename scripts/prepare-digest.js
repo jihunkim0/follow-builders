@@ -20,6 +20,7 @@ import { readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { execSync } from 'child_process';
 
 // -- Constants ---------------------------------------------------------------
 
@@ -79,6 +80,29 @@ async function main() {
   if (!feedX) errors.push('Could not fetch tweet feed');
   if (!feedPodcasts) errors.push('Could not fetch podcast feed');
 
+  // --- NEW: Local Override Integration ---
+  const scriptDir = decodeURIComponent(new URL('.', import.meta.url).pathname);
+  try {
+    // Attempt to run the local fetch script
+    execSync('node ' + join(scriptDir, 'fetch-local-feed.js'));
+  } catch (err) {
+    // Local fetching failed or was skipped silently
+  }
+
+  let localFeedX = { x: [] };
+  if (existsSync('/tmp/feed-x-local.json')) {
+    try {
+      localFeedX = JSON.parse(await readFile('/tmp/feed-x-local.json', 'utf-8'));
+      if (localFeedX.errors) errors.push(...localFeedX.errors);
+    } catch (e) {
+      errors.push('Failed to parse local X feed.');
+    }
+  }
+
+  // Combine Central and Local X feeds
+  const combinedX = [...(feedX?.x || []), ...(localFeedX?.x || [])];
+  // ---------------------------------------
+
   // 3. Load prompts with priority: user custom > remote (GitHub) > local default
   //
   // If the user has a custom prompt at ~/.follow-builders/prompts/<file>,
@@ -86,7 +110,7 @@ async function main() {
   // Otherwise, fetch the latest from GitHub so they get central improvements.
   // If GitHub is unreachable, fall back to the local copy shipped with the skill.
   const prompts = {};
-  const scriptDir = decodeURIComponent(new URL('.', import.meta.url).pathname);
+  // The scriptDir was already declared above, so we don't declare it again here
   const localPromptsDir = join(scriptDir, '..', 'prompts');
   const userPromptsDir = join(USER_DIR, 'prompts');
 
@@ -130,7 +154,7 @@ async function main() {
 
     // Content to remix
     podcasts: feedPodcasts?.podcasts || [],
-    x: feedX?.x || [],
+    x: combinedX,
 
     // Stats for the LLM to reference
     stats: {
